@@ -1,0 +1,24 @@
+{
+  "name": "slack-deploy-bot",
+  "version": "1.0.0",
+  "description": "Slack bot for triggering GCP Cloud Build deployments",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc",
+    "gcp-build": "npm run build",
+    "start": "functions-framework --target=deployBot",
+    "dev": "functions-framework --target=deployBot --source=dist"
+  },
+  "dependencies": {
+    "@google-cloud/functions-framework": "^3.4.0",
+    "@google-cloud/cloudbuild": "^4.0.0",
+    "@google-cloud/logging": "^11.0.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.4.0",
+    "@types/node": "^20.0.0"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}
