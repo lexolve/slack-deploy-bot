@@ -18,6 +18,9 @@
     "typescript": "^5.4.0",
     "@types/node": "^20.0.0"
   },
+  "overrides": {
+    "jws": "^4.0.1"
+  },
   "engines": {
     "node": ">=20.0.0"
   }
