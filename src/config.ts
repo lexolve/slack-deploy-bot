@@ -11,11 +11,22 @@ export const SERVICES = {
     triggerId: asTriggerId('deploy-backend-api'),
     displayName: 'Backend API',
   },
-  'frontend': {
-    triggerId: asTriggerId('deploy-frontend-app'),
-    displayName: 'Frontend App',
+  'lexolve-client': {
+    triggerId: asTriggerId('deploy-lexolve-client'),
+    displayName: 'Lexolve Client',
   },
-  // Add more services here
+  'website': {
+    triggerId: asTriggerId('deploy-lexolve-website'),
+    displayName: 'Lexolve Website',
+  },
+  'advokatt': {
+    triggerId: asTriggerId('deploy-advokatt'),
+    displayName: 'Advokatt',
+  },
+  'langgraph-agent': {
+    triggerId: asTriggerId('deploy-langgraph-agent'),
+    displayName: 'LangGraph Agent',
+  },
 } as const;
 
 // Derive ServiceAlias type from config keys
@@ -37,6 +48,30 @@ export function getServiceConfig(service: ServiceAlias): {
   readonly displayName: string;
 } {
   return SERVICES[service];
+}
+
+// Generate help message with available services
+export function getHelpMessage(): string {
+  const serviceList = Object.entries(SERVICES)
+    .map(([alias, config]) => `  • \`${alias}\` - ${config.displayName}`)
+    .join('\n');
+
+  const envList = Object.entries(ENVIRONMENTS)
+    .map(([alias, config]) => `  • \`${alias}\` - ${config.displayName}`)
+    .join('\n');
+
+  return (
+    `:rocket: *Deploy Bot Help*\n\n` +
+    `*Usage:* \`/deploy <service> <environment>\`\n\n` +
+    `*Available services:*\n${serviceList}\n\n` +
+    `*Available environments:*\n${envList}\n\n` +
+    `*Examples:*\n` +
+    `  • \`/deploy backend-api staging\`\n` +
+    `  • \`/deploy lexolve-client prod\`\n\n` +
+    `*Other commands:*\n` +
+    `  • \`/deploy help\` - Show this help message\n` +
+    `  • \`/deploy list\` - List available services`
+  );
 }
 
 // ===== Environment Configuration with Const Assertion =====

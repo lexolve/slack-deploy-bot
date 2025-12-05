@@ -21,10 +21,9 @@ import { triggerBuild } from './cloudbuild';
 import {
   SLACK_SIGNING_SECRET,
   validateConfig,
-  getValidServices,
-  getValidEnvironments,
   getServiceConfig,
   getEnvironmentConfig,
+  getHelpMessage,
 } from './config';
 import { asSlackUserId } from './types';
 
@@ -89,19 +88,21 @@ export const deployBot: HttpFunction = async (req, res) => {
     return;
   }
 
+  // Handle help and list commands
+  const commandText = command.text.trim().toLowerCase();
+  if (commandText === 'help' || commandText === 'list' || commandText === '') {
+    res.json(createEphemeralResponse(getHelpMessage()));
+    return;
+  }
+
   // Parse deploy command
   const parseResult = parseDeployCommand(command.text);
 
   if (!parseResult.ok) {
-    const availableServices = getValidServices().join(', ');
-    const availableEnvironments = getValidEnvironments().join(', ');
     res.json(
       createEphemeralResponse(
-        `:information_source: *Usage:* \`/deploy <service> <environment>\`\n\n` +
-          `*Available services:* ${availableServices}\n` +
-          `*Available environments:* ${availableEnvironments}\n\n` +
-          `*Example:* \`/deploy backend-api staging\`\n\n` +
-          `*Error:* ${parseResult.error.message}`
+        `:x: ${parseResult.error.message}\n\n` +
+          `Type \`/deploy help\` to see available services and usage.`
       )
     );
     return;
