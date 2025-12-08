@@ -32,7 +32,7 @@ options:
   logging: CLOUD_LOGGING_ONLY
 
 substitutions:
-  _REGION: eu-west1
+  _REGION: europe-west1
   _FUNCTION_NAME: slack-deploy-bot
   _STAGING_PROJECT_ID: ''
   _PROD_PROJECT_ID: ''
