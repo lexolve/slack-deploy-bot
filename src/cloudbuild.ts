@@ -83,6 +83,9 @@ export async function triggerBuild(
     const [operation] = await client.runBuildTrigger({
       projectId,
       triggerId,
+      source: {
+        branchName: 'main',
+      },
     });
 
     // Extract metadata with proper type checking
