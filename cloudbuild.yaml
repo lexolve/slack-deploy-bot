@@ -10,6 +10,7 @@ steps:
     args: ['run', 'build']
 
   # Deploy Cloud Function
+  # Note: Using ^;^ delimiter to allow commas in ALLOWED_USERS value
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
     entrypoint: gcloud
     args:
@@ -25,10 +26,7 @@ steps:
       - --allow-unauthenticated
       - --service-account=${_FUNCTION_NAME}@${PROJECT_ID}.iam.gserviceaccount.com
       - --set-secrets=SLACK_SIGNING_SECRET=slack-signing-secret:latest
-      - --set-env-vars=ALLOWED_USERS=${_ALLOWED_USERS}
-      - --set-env-vars=STAGING_PROJECT_ID=${_STAGING_PROJECT_ID}
-      - --set-env-vars=PROD_PROJECT_ID=${_PROD_PROJECT_ID}
-      - --set-env-vars=FUNCTION_REGION=${_REGION}
+      - --set-env-vars=^;^ALLOWED_USERS=${_ALLOWED_USERS};STAGING_PROJECT_ID=${_STAGING_PROJECT_ID};PROD_PROJECT_ID=${_PROD_PROJECT_ID};FUNCTION_REGION=${_REGION}
 
 options:
   logging: CLOUD_LOGGING_ONLY
