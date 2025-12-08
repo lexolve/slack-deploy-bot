@@ -76,7 +76,9 @@ export function getHelpMessage(): string {
     `  • \`/deploy lexolve-client prod\`\n\n` +
     `*Other commands:*\n` +
     `  • \`/deploy help\` - Show this help message\n` +
-    `  • \`/deploy list\` - List available services`
+    `  • \`/deploy list\` - List available services\n` +
+    `  • \`/deploy status staging\` - Show recent staging builds\n` +
+    `  • \`/deploy status prod\` - Show recent prod builds`
   );
 }
 

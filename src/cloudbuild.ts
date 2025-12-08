@@ -69,6 +69,43 @@ function toCloudBuildError(error: unknown): CloudBuildError {
   };
 }
 
+export interface BuildStatus {
+  id: string;
+  status: string;
+  triggerName: string;
+  createTime: string;
+  logUrl: string;
+}
+
+/**
+ * List recent builds for a project
+ */
+export async function listRecentBuilds(
+  projectId: ProjectId,
+  limit: number = 5
+): Promise<Result<BuildStatus[], CloudBuildError>> {
+  try {
+    const [builds] = await client.listBuilds({
+      projectId,
+      pageSize: limit,
+    });
+
+    const buildStatuses: BuildStatus[] = builds.map((build) => ({
+      id: build.id ?? 'unknown',
+      status: String(build.status ?? 'UNKNOWN'),
+      triggerName: build.substitutions?.['TRIGGER_NAME'] ?? build.buildTriggerId ?? 'manual',
+      createTime: build.createTime?.seconds
+        ? new Date(Number(build.createTime.seconds) * 1000).toISOString()
+        : 'unknown',
+      logUrl: build.logUrl ?? '',
+    }));
+
+    return ok(buildStatuses);
+  } catch (error) {
+    return err(toCloudBuildError(error));
+  }
+}
+
 /**
  * Trigger a Cloud Build deployment
  * @param projectId GCP project ID where the trigger exists

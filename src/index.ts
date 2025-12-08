@@ -18,13 +18,14 @@ import {
   createDeniedAuditLog,
   createErrorAuditLog,
 } from './audit';
-import { triggerBuild } from './cloudbuild';
+import { triggerBuild, listRecentBuilds, type BuildStatus } from './cloudbuild';
 import {
   SLACK_SIGNING_SECRET,
   validateConfig,
   getServiceConfig,
   getEnvironmentConfig,
   getHelpMessage,
+  isValidEnvironment,
 } from './config';
 import { asSlackUserId } from './types';
 
@@ -93,6 +94,55 @@ export const deployBot: HttpFunction = async (req, res) => {
   const commandText = command.text.trim().toLowerCase();
   if (commandText === 'help' || commandText === 'list' || commandText === '') {
     res.json(createEphemeralResponse(getHelpMessage()));
+    return;
+  }
+
+  // Handle status command: /deploy status <environment>
+  if (commandText.startsWith('status')) {
+    const parts = commandText.split(/\s+/);
+    const envArg = parts[1];
+
+    if (!envArg || !isValidEnvironment(envArg)) {
+      res.json(createEphemeralResponse(':x: Usage: `/deploy status staging` or `/deploy status prod`'));
+      return;
+    }
+
+    const envConfig = getEnvironmentConfig(envArg as 'staging' | 'prod');
+
+    // Respond immediately, fetch status in background
+    res.json(createEphemeralResponse(`:hourglass_flowing_sand: Fetching recent builds for ${envConfig.displayName}...`));
+
+    const responseUrl = command.response_url;
+    void (async () => {
+      const result = await listRecentBuilds(envConfig.projectId, 5);
+      if (!result.ok) {
+        await sendDelayedResponse(responseUrl, createEphemeralResponse(`:x: Failed to fetch builds: ${result.error.message}`));
+        return;
+      }
+
+      const statusEmoji = (status: string) => {
+        switch (status) {
+          case 'SUCCESS': return ':white_check_mark:';
+          case 'FAILURE': return ':x:';
+          case 'WORKING': return ':hourglass_flowing_sand:';
+          case 'QUEUED': return ':clock1:';
+          case 'CANCELLED': return ':no_entry_sign:';
+          default: return ':grey_question:';
+        }
+      };
+
+      const buildLines = result.value.map((b: BuildStatus) => {
+        const time = new Date(b.createTime).toLocaleString('en-GB', { timeZone: 'Europe/Oslo' });
+        return `${statusEmoji(b.status)} \`${b.triggerName}\` - ${b.status} - ${time}\n   <${b.logUrl}|View logs>`;
+      }).join('\n\n');
+
+      await sendDelayedResponse(
+        responseUrl,
+        createEphemeralResponse(
+          `:clipboard: *Recent builds for ${envConfig.displayName}*\n\n${buildLines || 'No recent builds found.'}`
+        )
+      );
+    })();
     return;
   }
 
