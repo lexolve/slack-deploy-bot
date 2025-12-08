@@ -115,6 +115,11 @@ export const deployBot: HttpFunction = async (req, res) => {
   const serviceConfig = getServiceConfig(service);
   const envConfig = getEnvironmentConfig(environment);
 
+  if (!serviceConfig) {
+    res.json(createEphemeralResponse(`:x: Service not configured: ${service}`));
+    return;
+  }
+
   // Respond immediately to Slack (must be within 3 seconds)
   res.json(
     createEphemeralResponse(

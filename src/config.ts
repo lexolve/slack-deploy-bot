@@ -4,37 +4,46 @@
 
 import { asTriggerId, asProjectId, asSlackUserId, type TriggerId, type ProjectId, type SlackUserId } from './types';
 
-// ===== Service Configuration with Const Assertion =====
+// ===== Service Configuration from Environment =====
 
-export const SERVICES = {
-  'backend-api': {
-    triggerId: asTriggerId('deploy-backend-api'),
-    displayName: 'Backend API',
-  },
-  'lexolve-client': {
-    triggerId: asTriggerId('deploy-lexolve-client'),
-    displayName: 'Lexolve Client',
-  },
-  'website': {
-    triggerId: asTriggerId('deploy-lexolve-website'),
-    displayName: 'Lexolve Website',
-  },
-  'advokatt': {
-    triggerId: asTriggerId('deploy-advokatt'),
-    displayName: 'Advokatt',
-  },
-  'langgraph-agent': {
-    triggerId: asTriggerId('deploy-langgraph-agent'),
-    displayName: 'LangGraph Agent',
-  },
-} as const;
+interface ServiceConfig {
+  triggerId: TriggerId;
+  displayName: string;
+}
 
-// Derive ServiceAlias type from config keys
-export type ServiceAlias = keyof typeof SERVICES;
+type ServicesMap = Record<string, ServiceConfig>;
+
+/**
+ * Parse SERVICES_CONFIG env var
+ * Format: "alias1:triggerId1:Display Name 1,alias2:triggerId2:Display Name 2"
+ */
+function parseServicesConfig(): ServicesMap {
+  const configStr = process.env['SERVICES_CONFIG'] ?? '';
+  if (!configStr) {
+    return {};
+  }
+
+  const services: ServicesMap = {};
+  for (const entry of configStr.split(',')) {
+    const [alias, triggerId, displayName] = entry.split(':');
+    if (alias && triggerId && displayName) {
+      services[alias.trim()] = {
+        triggerId: asTriggerId(triggerId.trim()),
+        displayName: displayName.trim(),
+      };
+    }
+  }
+  return services;
+}
+
+export const SERVICES: ServicesMap = parseServicesConfig();
+
+// Service alias is now dynamic from env var
+export type ServiceAlias = string;
 
 // Get all valid service aliases
-export function getValidServices(): readonly ServiceAlias[] {
-  return Object.keys(SERVICES) as ServiceAlias[];
+export function getValidServices(): string[] {
+  return Object.keys(SERVICES);
 }
 
 // Type guard for service validation
@@ -42,11 +51,8 @@ export function isValidService(value: string): value is ServiceAlias {
   return value in SERVICES;
 }
 
-// Get service config (type-safe)
-export function getServiceConfig(service: ServiceAlias): {
-  readonly triggerId: TriggerId;
-  readonly displayName: string;
-} {
+// Get service config
+export function getServiceConfig(service: ServiceAlias): ServiceConfig | undefined {
   return SERVICES[service];
 }
 

@@ -26,7 +26,7 @@ steps:
       - --allow-unauthenticated
       - --service-account=${_FUNCTION_NAME}@${PROJECT_ID}.iam.gserviceaccount.com
       - --set-secrets=SLACK_SIGNING_SECRET=slack-signing-secret:latest
-      - --set-env-vars=^;^ALLOWED_USERS=${_ALLOWED_USERS};STAGING_PROJECT_ID=${_STAGING_PROJECT_ID};PROD_PROJECT_ID=${_PROD_PROJECT_ID};FUNCTION_REGION=${_REGION}
+      - --set-env-vars=^;^ALLOWED_USERS=${_ALLOWED_USERS};STAGING_PROJECT_ID=${_STAGING_PROJECT_ID};PROD_PROJECT_ID=${_PROD_PROJECT_ID};FUNCTION_REGION=${_REGION};SERVICES_CONFIG=${_SERVICES_CONFIG}
 
 options:
   logging: CLOUD_LOGGING_ONLY
@@ -37,3 +37,4 @@ substitutions:
   _STAGING_PROJECT_ID: ''
   _PROD_PROJECT_ID: ''
   _ALLOWED_USERS: ''
+  _SERVICES_CONFIG: ''
