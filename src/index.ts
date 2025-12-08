@@ -114,34 +114,42 @@ export const deployBot: HttpFunction = async (req, res) => {
 
     const responseUrl = command.response_url;
     void (async () => {
-      const result = await listRecentBuilds(envConfig.projectId, 5);
-      if (!result.ok) {
-        await sendDelayedResponse(responseUrl, createEphemeralResponse(`:x: Failed to fetch builds: ${result.error.message}`));
-        return;
-      }
-
-      const statusEmoji = (status: string) => {
-        switch (status) {
-          case 'SUCCESS': return ':white_check_mark:';
-          case 'FAILURE': return ':x:';
-          case 'WORKING': return ':hourglass_flowing_sand:';
-          case 'QUEUED': return ':clock1:';
-          case 'CANCELLED': return ':no_entry_sign:';
-          default: return ':grey_question:';
+      try {
+        const result = await listRecentBuilds(envConfig.projectId, 5);
+        if (!result.ok) {
+          await sendDelayedResponse(responseUrl, createEphemeralResponse(`:x: Failed to fetch builds: ${result.error.message}`));
+          return;
         }
-      };
 
-      const buildLines = result.value.map((b: BuildStatus) => {
-        const time = new Date(b.createTime).toLocaleString('en-GB', { timeZone: 'Europe/Oslo' });
-        return `${statusEmoji(b.status)} \`${b.triggerName}\` - ${b.status} - ${time}\n   <${b.logUrl}|View logs>`;
-      }).join('\n\n');
+        const statusEmoji = (status: string) => {
+          switch (status) {
+            case 'SUCCESS': return ':white_check_mark:';
+            case 'FAILURE': return ':x:';
+            case 'WORKING': return ':hourglass_flowing_sand:';
+            case 'QUEUED': return ':clock1:';
+            case 'CANCELLED': return ':no_entry_sign:';
+            default: return ':grey_question:';
+          }
+        };
 
-      await sendDelayedResponse(
-        responseUrl,
-        createEphemeralResponse(
-          `:clipboard: *Recent builds for ${envConfig.displayName}*\n\n${buildLines || 'No recent builds found.'}`
-        )
-      );
+        const buildLines = result.value.map((b: BuildStatus) => {
+          const time = new Date(b.createTime).toLocaleString('en-GB', { timeZone: 'Europe/Oslo' });
+          return `${statusEmoji(b.status)} \`${b.triggerName}\` - ${b.status} - ${time}\n   <${b.logUrl}|View logs>`;
+        }).join('\n\n');
+
+        await sendDelayedResponse(
+          responseUrl,
+          createEphemeralResponse(
+            `:clipboard: *Recent builds for ${envConfig.displayName}*\n\n${buildLines || 'No recent builds found.'}`
+          )
+        );
+      } catch (error) {
+        console.error('Background status fetch error:', error);
+        await sendDelayedResponse(
+          responseUrl,
+          createEphemeralResponse(`:x: Unexpected error fetching builds. Check logs.`)
+        );
+      }
     })();
     return;
   }
