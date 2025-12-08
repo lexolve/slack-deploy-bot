@@ -9,6 +9,7 @@ import {
   parseDeployCommand,
   createEphemeralResponse,
   createChannelResponse,
+  sendDelayedResponse,
 } from './slack';
 import { isUserAuthorized, getAuthorizationErrorMessage } from './auth';
 import {
@@ -114,61 +115,79 @@ export const deployBot: HttpFunction = async (req, res) => {
   const serviceConfig = getServiceConfig(service);
   const envConfig = getEnvironmentConfig(environment);
 
-  // Trigger Cloud Build
-  const buildResult = await triggerBuild(envConfig.projectId, serviceConfig.triggerId);
-
-  if (!buildResult.ok) {
-    const duration = Date.now() - startTime;
-
-    // Log error
-    await logAuditEvent(
-      createErrorAuditLog(
-        userId,
-        command.user_name,
-        service,
-        environment,
-        buildResult.error.message,
-        duration,
-        envConfig.projectId,
-        serviceConfig.triggerId
-      )
-    );
-
-    // Send error response
-    res.json(
-      createEphemeralResponse(
-        `:x: *Failed to trigger deployment*\n\n` +
-          `Error: ${buildResult.error.message}\n\n` +
-          `Please check that the trigger exists and you have the correct permissions.`
-      )
-    );
-    return;
-  }
-
-  // Log successful deployment
-  const duration = Date.now() - startTime;
-  await logAuditEvent(
-    createSuccessAuditLog(
-      userId,
-      command.user_name,
-      service,
-      environment,
-      envConfig.projectId,
-      serviceConfig.triggerId,
-      buildResult.value.buildId,
-      duration
-    )
-  );
-
-  // Send success response to channel
+  // Respond immediately to Slack (must be within 3 seconds)
   res.json(
-    createChannelResponse(
-      `:rocket: *Deployment triggered!*\n\n` +
-        `*Service:* ${serviceConfig.displayName} (\`${service}\`)\n` +
-        `*Environment:* ${envConfig.displayName} (\`${environment}\`)\n` +
-        `*Build ID:* ${buildResult.value.buildId}\n` +
-        `*Triggered by:* <@${userId}>\n\n` +
-        `<${buildResult.value.logUrl}|View build logs>`
+    createEphemeralResponse(
+      `:hourglass_flowing_sand: Triggering deployment of *${serviceConfig.displayName}* to *${envConfig.displayName}*...`
     )
   );
+
+  // Process deployment in background and send result via response_url
+  const responseUrl = command.response_url;
+
+  // Fire and forget - don't await
+  void (async () => {
+    try {
+      const buildResult = await triggerBuild(envConfig.projectId, serviceConfig.triggerId);
+
+      if (!buildResult.ok) {
+        const duration = Date.now() - startTime;
+
+        await logAuditEvent(
+          createErrorAuditLog(
+            userId,
+            command.user_name,
+            service,
+            environment,
+            buildResult.error.message,
+            duration,
+            envConfig.projectId,
+            serviceConfig.triggerId
+          )
+        );
+
+        await sendDelayedResponse(
+          responseUrl,
+          createEphemeralResponse(
+            `:x: *Failed to trigger deployment*\n\n` +
+              `Error: ${buildResult.error.message}\n\n` +
+              `Please check that the trigger exists and you have the correct permissions.`
+          )
+        );
+        return;
+      }
+
+      const duration = Date.now() - startTime;
+      await logAuditEvent(
+        createSuccessAuditLog(
+          userId,
+          command.user_name,
+          service,
+          environment,
+          envConfig.projectId,
+          serviceConfig.triggerId,
+          buildResult.value.buildId,
+          duration
+        )
+      );
+
+      await sendDelayedResponse(
+        responseUrl,
+        createChannelResponse(
+          `:rocket: *Deployment triggered!*\n\n` +
+            `*Service:* ${serviceConfig.displayName} (\`${service}\`)\n` +
+            `*Environment:* ${envConfig.displayName} (\`${environment}\`)\n` +
+            `*Build ID:* ${buildResult.value.buildId}\n` +
+            `*Triggered by:* <@${userId}>\n\n` +
+            `<${buildResult.value.logUrl}|View build logs>`
+        )
+      );
+    } catch (error) {
+      console.error('Background deployment error:', error);
+      await sendDelayedResponse(
+        responseUrl,
+        createEphemeralResponse(`:x: Unexpected error during deployment. Check logs.`)
+      );
+    }
+  })();
 };

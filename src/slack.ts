@@ -142,3 +142,18 @@ export function createChannelResponse(text: string): SlackResponse {
     text,
   };
 }
+
+/**
+ * Send a delayed response to Slack's response_url
+ * Used when processing takes longer than 3 seconds
+ */
+export async function sendDelayedResponse(
+  responseUrl: string,
+  response: SlackResponse
+): Promise<void> {
+  await fetch(responseUrl, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(response),
+  });
+}
