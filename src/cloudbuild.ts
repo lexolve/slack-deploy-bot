@@ -88,7 +88,7 @@ export async function listRecentBuilds(
     const [builds] = await client.listBuilds({
       projectId,
       pageSize: limit,
-    });
+    }, { autoPaginate: false });
 
     const buildStatuses: BuildStatus[] = builds.map((build) => ({
       id: build.id ?? 'unknown',
